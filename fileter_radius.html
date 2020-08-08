@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+  <title>Document</title>
+  <style>
+    .pac-container {
+      /* background-color: lightblue;
+      border: 2px #556b2f;
+      min-width: 450px; */
+    }
+
+    .pac-item-query {
+      font-size: 15px;
+    }
+
+    .pac-item {
+      padding-top: 10px;
+      height: 50px;
+    }
+
+    .pac-item:hover {
+      background-color: lightgoldenrodyellow;
+    }
+
+    #map-canvas {
+      /* width: 500px; */
+      height: 500px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Content here -->
+    <div class="row">
+      <div class="col-sm-12 col-md-12">
+        <div id="map-canvas"></div>
+        <div class="row" style="margin-top: 20px;">
+
+          <div class="col-sm-12 col-md-12">
+            <div class="form-group">
+              <label>Lat:</label>
+              <input id="latitude_input" />
+              <label>Lng:</label>
+              <input id="longitude_input" />
+            </div>
+            <div class="list-group" id="list-toko">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <script src="http://demos.codexworld.com/includes/js/bootstrap.js"></script>
+  <!-- Place this tag in your head or just before your close body tag. -->
+  <!--<script src="https://apis.google.com/js/platform.js" async defer></script>-->
+  <!-- Google Maps JavaScript library -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?v=3.exp&libraries=places&key=AIzaSyDQm7fskSlerL2C1_1ODi4-49MMQanF63Y"></script>
+
+  <script>
+    var searchInput = 'search_input';
+    function calcCrow(coords1, coords2) {
+      // var R = 6.371; // km
+      var R = 6371000;
+      var dLat = toRad(coords2.lat - coords1.lat);
+      var dLon = toRad(coords2.lng - coords1.lng);
+      var lat1 = toRad(coords1.lat);
+      var lat2 = toRad(coords2.lat);
+
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      var d = R * c;
+      return d;
+    }
+
+    // Converts numeric degrees to radians
+    function toRad(Value) {
+      return Value * Math.PI / 180;
+    }
+    
+    var markers2;
+    function selectedToko(data){
+      // console.log(data);
+      // console.log(markers2);
+      alert(markers2[data][4]);
+    }
+
+    $(document).ready(function () {
+      var exampleLatLng = {
+        lat: 52.4555687, 
+        lng: 5.029231599999994
+      }
+
+      document.getElementById('latitude_input').value = exampleLatLng.lat;
+      document.getElementById('longitude_input').value = exampleLatLng.lng;
+
+      var gmarkers1 = [];
+      var markers1 = [];
+
+      markers1 = [
+        ['0', 'Title', 52.4357808, 4.991315699999973, 'Toko 1'],
+        ['1', 'Title', 52.4357808, 4.981315699999973, 'Toko 2'],
+        ['2', 'Title', 52.4555687, 5.039231599999994, 'Toko 3'],
+        ['3', 'Title', 52.4555687, 5.029231599999994, 'Toko 4']
+      ];
+
+      markers2 = markers1;
+
+      var infowindow = new google.maps.InfoWindow({
+        content: ''
+      });
+
+      // Our markers
+      let displayContent=[];
+      for (var m = 0; m < markers1.length; m++) {
+        var markerLatLng={
+          lat: markers1[m][2],
+          lng: markers1[m][3] 
+        }
+        var jarak= calcCrow(exampleLatLng, markerLatLng)/1000;
+        if((jarak)<5){
+          var content = '<div class="list-group-item list-group-item-action flex-column align-items-start" onClick="selectedToko('+ m +')">' +
+            '<div class="d-flex w-100 justify-content-between">' +
+            '<h5 class="mb-1">' + markers1[m][4] + '</h5>' +
+            '<small>'+jarak +'KM </small>' +
+            '</div> ' +
+            '<p class="mb-1">Donec id elit non mi porta gravida at eget metus. Maecenas sed diam eget risus varius blandit.</p> ' +
+            '<small>Donec id elit non mi porta.</small> ' +
+            '</div>';
+            displayContent.push({content,jarak})
+        }else{
+         delete markers1[m];
+        }
+      }
+      displayContent.sort(function (a, b) {
+        return parseFloat(a.jarak) - parseFloat(b.jarak);
+      });
+
+       for (var m = 0; m < markers1.length; m++) {
+        
+       }
+
+      // $('#list-toko').append(displayContent.content);
+
+      let mergedList = displayContent.map(function(item){
+        return item.content
+      })
+      $('#list-toko').append(mergedList.join(''));
+      /**
+       * Function to init map
+       */
+
+
+      function initialize() {
+        var center = new google.maps.LatLng(52.4357808, 4.991315699999973);
+        var mapOptions = {
+          zoom: 12,
+          center: center,
+          mapTypeId: google.maps.MapTypeId.TERRAIN
+        };
+
+        map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
+        for (i = 0; i < markers1.length; i++) {
+          addMarker(markers1[i]);
+        }
+      }
+
+      /**
+       * Function to add marker to map
+       */
+
+      function addMarker(marker) {
+        var category = marker[4];
+        var title = marker[1];
+        var pos = new google.maps.LatLng(marker[2], marker[3]);
+        var content = marker[1];
+
+        marker1 = new google.maps.Marker({
+          title: title,
+          position: pos,
+          category: category,
+          map: map
+        });
+
+        gmarkers1.push(marker1);
+
+        // Marker click listener
+        google.maps.event.addListener(marker1, 'click', (function (marker1, content) {
+          return function () {
+            console.log('Gmarker 1 gets pushed');
+            infowindow.setContent(content);
+            infowindow.open(map, marker1);
+            map.panTo(this.getPosition());
+            map.setZoom(15);
+          }
+        })(marker1, content));
+      }
+
+      /**
+       * Function to filter markers by category
+       */
+
+      filterMarkers = function (category) {
+        for (i = 0; i < markers1.length; i++) {
+          marker = gmarkers1[i];
+          // If is same category or category not picked
+          if (marker.category == category || category.length === 0) {
+            marker.setVisible(true);
+          }
+          // Categories don't match 
+          else {
+            marker.setVisible(false);
+          }
+        }
+      }
+
+      // Init map
+      initialize();
+    });
+  </script>
+</body>
+
+</html>

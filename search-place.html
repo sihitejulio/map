@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+  <title>Document</title>
+  <style>
+    .pac-container {
+      /* background-color: lightblue;
+      border: 2px #556b2f;
+      min-width: 450px; */
+    }
+
+    .pac-item-query {
+      font-size: 15px;
+    }
+
+    .pac-item {
+      padding-top: 10px;
+      height: 50px;
+    }
+
+    .pac-item:hover {
+      background-color: lightgoldenrodyellow;
+    }
+
+    #map-canvas {
+      /* width: 500px; */
+      height: 500px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Content here -->
+    <div class="row">
+      <div class="col-sm-12 col-md-12">
+        <div id="map-canvas"></div>
+        <div class="row col-md-12" style="margin-top: 20px;">
+          <button id="showMe" class="btn btn-primary center-align">
+            Gunakan lokasi saya
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-12 col-md-12">
+        <div class="form-group">
+          <label>Location:</label>
+          <input type="text" class="form-control" id="search_input" placeholder="Type address..." />
+          <input type="hidden" id="latitude_input" />
+          <input type="hidden" id="longitude_input" />
+          <label>Provinsi:</label>
+          <input type="text" class="form-control" id="administrative_area_level_1" disabled />
+          <label>Kabupaten/kota:</label>
+          <input type="text" class="form-control" id="administrative_area_level_2" disabled />
+          <label>Kecamata:</label>
+          <input type="text" class="form-control" id="administrative_area_level_3" disabled />
+        </div>
+
+        <!-- Display latitude and longitude -->
+        <div class="latlong-view">
+          <p><b>Latitude:</b> <span id="latitude_view"></span></p>
+          <p><b>Longitude:</b> <span id="longitude_view"></span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <script src="http://demos.codexworld.com/includes/js/bootstrap.js"></script>
+  <!-- Place this tag in your head or just before your close body tag. -->
+  <!--<script src="https://apis.google.com/js/platform.js" async defer></script>-->
+
+  <!-- Google Maps JavaScript library -->
+
+  <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&libraries=places&key=AIzaSyDQm7fskSlerL2C1_1ODi4-49MMQanF63Y"></script>
+  <script>
+    var searchInput = 'search_input';
+
+    $(document).ready(function () {
+      var autocomplete;
+      const __KEY = "AIzaSyB88z39IgLATxUBa9OKsyznO_fQ7JTaZjk";
+      const mapArea = document.getElementById('map-canvas');
+      let Gmap, Gmarker;
+      var placeSearch, autocomplete;
+      var componentForm = {
+        administrative_area_level_1: 'long_name',
+        administrative_area_level_2: 'long_name',
+        administrative_area_level_3: 'long_name',
+      };
+      const txtLat = document.getElementById('latitude_input');
+      const txtLng= document.getElementById('longitude_input');
+
+      const defaultLat = txtLat.value === "0" || txtLat.value === "" ? 3.585274 : parseFloat(document.getElementById('latitude_input').value);
+      const defaultLng = txtLng.value === "0" || txtLat.value == "" ? 98.681337 : parseFloat(document.getElementById('longitude_input').value);
+     
+      function showMap(lat,lng) {
+        var mapOptions = {
+          zoom: 18,
+          center: {lat,lng},
+        };
+        Gmap = new google.maps.Map(mapArea, mapOptions);
+        Gmap.addListener('drag', function () {
+          Gmarker.setPosition(this.getCenter());
+        });
+
+        Gmap.addListener('dragend', function () {
+          Gmarker.setPosition(this.getCenter());
+        });
+
+        Gmap.addListener('idle', function () {
+          Gmarker.setPosition(this.getCenter());
+          if (Gmarker.getPosition().lat() !== lat || Gmarker.getPosition().lng() !== lng) {
+            setTimeout(() => {
+              // console.log("I have to get new geocode here!")
+              getGeolocation(this.getCenter().lat(), this.getCenter().lng()); // update position display
+            }, 2000);
+          }
+        });
+      }
+      function initAutocomplete() {
+        // Create the autocomplete object, restricting the search to geographical
+        // location types.
+        autocomplete = new google.maps.places.Autocomplete(
+          /** @type {!HTMLInputElement} */
+          (document.getElementById(searchInput)), {
+          types: []
+        });
+
+        // When the user selects an address from the dropdown, populate the address
+        // fields in the form.
+        autocomplete.addListener('place_changed', fillInAddress);
+      }
+      function fillInAddress() {
+        const place = autocomplete.getPlace();
+        let location = {
+          lat :place.geometry.location.lat(),
+          lng : place.geometry.location.lat(),
+          address_components: place.address_components
+        };
+        fillComponent(location);
+      }
+      function createMarker (latlng){
+        let markerOptions = {
+          position: latlng,
+          map: Gmap,
+          animation: google.maps.Animation.BOUNCE,
+          clickable: true,
+          draggable: true
+        };
+        Gmarker = new google.maps.Marker(markerOptions);
+      }
+      function displayLocation(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const latlng = { lat, lng }
+        showMap(lat, lng);
+        createMarker(latlng);
+        mapArea.style.display = "block";
+        getGeolocation(lat, lng);
+      }
+      function getGeolocation (lat, lng) {
+        const latlng = lat + "," + lng;
+        fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latlng}&key=${__KEY}`)
+          .then(res => res.json()).then(data => {
+            const place= data.results[0];
+            let location = {
+              lat: place.geometry.location.lat,
+              lng: place.geometry.location.lat,
+              address_components: place.address_components
+            };
+            document.getElementById(searchInput).value= place.formatted_address;
+            fillComponent(location);
+            return place;
+          });
+      }
+      function showError(error) {
+        mapArea.style.display = "block"
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            mapArea.innerHTML = "You denied the request for your location."
+            break;
+          case error.POSITION_UNAVAILABLE:
+            mapArea.innerHTML = "Your Location information is unavailable."
+            break;
+          case error.TIMEOUT:
+            mapArea.innerHTML = "Your request timed out. Please try again"
+            break;
+          case error.UNKNOWN_ERROR:
+            mapArea.innerHTML = "An unknown error occurred please try again after some time."
+            break;
+        }
+      }
+      function fillComponent(location){
+        document.getElementById('latitude_input').value = location.lat;
+        document.getElementById('longitude_input').value = location.lng;
+
+        document.getElementById('latitude_view').innerHTML = location.lat;
+        document.getElementById('longitude_view').innerHTML = location.lng;
+
+        for (var component in componentForm) {
+          document.getElementById(component).value = '';
+          document.getElementById(component).disabled = false;
+        }
+
+        for (var i = 0; i < location.address_components.length; i++) {
+          var addressType = location.address_components[i].types[0];
+          if (componentForm[addressType]) {
+            var val = location.address_components[i][componentForm[addressType]];
+            document.getElementById(addressType).value = val;
+          }
+        }
+      }
+      showMap(defaultLat, defaultLng);
+      google.maps.event.addDomListener(window, 'load', initAutocomplete);
+
+      $("#showMe").click(function () {
+        const options = {
+          enableHighAccuracy: true
+        }
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(displayLocation, showError, options)
+        }
+        else {
+          // M.toast({ html: 'Sorry, your browser does not support this feature... Please Update your Browser to enjoy it', classes: 'rounded' });
+        }
+      });
+
+      $(document).on('change', '#' + searchInput, function () {
+        document.getElementById('latitude_input').value = '';
+        document.getElementById('longitude_input').value = '';
+
+        document.getElementById('latitude_view').innerHTML = '';
+        document.getElementById('longitude_view').innerHTML = '';
+      });
+    });
+
+
+  </script>
+</body>
+
+</html>
